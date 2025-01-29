@@ -14,7 +14,7 @@ aio_user = os.getenv("AIO_USER")
 aio_key = os.getenv("AIO_KEY")
 
 # Setup test feed
-mqtt_topic = aio_user + "/feeds/test_feed"
+mqtt_topic = aio_user + "/feeds/test-feed"
 
 # Define callback methods which are called when events occur
 def connect(mqtt_client, userdata, flags, rc):
