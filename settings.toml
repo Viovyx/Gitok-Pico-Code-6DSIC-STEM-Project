@@ -1,0 +1,7 @@
+WIFI_SSID="<SSID>"
+WIFI_PASS="<PASS>"
+
+AIO_USER="Tapgate"
+AIO_KEY="aio_SVVQ61HhuAzANAn0gjaTixoF0KMy"
+BROKER="io.adafruit.com"
+PORT=1883
