@@ -21,16 +21,18 @@ aio_key = os.getenv("AIO_KEY")
 print("logged in")
 
 
-mqtt_topic = aio_user+"/feeds/lock.reed"
+mqtt_topic = aio_user+"/feeds/lock.status"
 
 #Initializing pins
 #=============================================================
 print("initializing pins")
 actuator = digitalio.DigitalInOut(board.GP15)
 actuator.direction = digitalio.Direction.OUTPUT
+actuator.value = False
 
 actuator2 = digitalio.DigitalInOut(board.GP16)
 actuator2.direction = digitalio.Direction.OUTPUT
+actuator2.value = False
 
 buzzer = pwmio.PWMOut(board.GP14, variable_frequency=True)
 
@@ -42,13 +44,13 @@ def ToneBuzz():
     buzzer.duty_cycle = 2**14
     buzzer.frequency = 300
     
-def OpenDoor():
+async def OpenDoor():
     actuator.value = True
     actuator2.value = True
     ToneBuzz()
-    time.sleep(5)
+    await asyncio.sleep(8)
     actuator.value = False
-    actuator2 = False
+    actuator2.value = False
     
 # Define callback methods which are called when events occur
 #===========================================================
@@ -82,7 +84,8 @@ def publish(mqtt_client, userdata, topic, pid):
 
 def message(client, topic, message):
     if message == "1":
-        OpenDoor()
+        asyncio.create_task(OpenDoor())
+        print("open")
         
 #===========================================================
         
@@ -118,9 +121,6 @@ def subscribe_to(topics: []):
 topics = ["open"]
 subscribe_to(topics)
 
-print("Publishing to %s" % mqtt_topic)
-mqtt_client.publish(mqtt_topic, "Slot")
-
 async def ListenReed(interval):
     while True:
         val = random.randint(0,1)
@@ -134,7 +134,7 @@ async def ListenMQTTRequest(interval):
             mqtt_client.message
         except:
             print("no messages")
-        await asyncio.sleep(interval)
+            await asyncio.sleep(interval)
         
 async def main():
     Reed_task = asyncio.create_task(ListenReed(2))
@@ -142,5 +142,3 @@ async def main():
     await asyncio.gather(Reed_task,MQTT_task)
 
 asyncio.run(main())
-
-
