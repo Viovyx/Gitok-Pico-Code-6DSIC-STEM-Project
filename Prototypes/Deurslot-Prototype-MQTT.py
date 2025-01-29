@@ -40,14 +40,14 @@ reed = digitalio.DigitalInOut(board.GP22)
 reed.direction = digitalio.Direction.INPUT
 print("succes")
 #===============================================================
-def ToneBuzz():
+async def ToneBuzz():
     buzzer.duty_cycle = 2**14
     buzzer.frequency = 300
     
 async def OpenDoor():
     actuator.value = True
     actuator2.value = True
-    ToneBuzz()
+    await ToneBuzz()
     await asyncio.sleep(8)
     actuator.value = False
     actuator2.value = False
