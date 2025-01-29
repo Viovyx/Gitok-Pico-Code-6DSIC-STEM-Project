@@ -48,9 +48,10 @@ async def OpenDoor():
     actuator.value = True
     actuator2.value = True
     await ToneBuzz()
-    await asyncio.sleep(8)
+    await asyncio.sleep(6)
     actuator.value = False
     actuator2.value = False
+    print("done")
     
 # Define callback methods which are called when events occur
 #===========================================================
