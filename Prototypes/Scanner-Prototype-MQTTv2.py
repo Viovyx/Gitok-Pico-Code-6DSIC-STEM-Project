@@ -77,7 +77,7 @@ def toneFail():
     buzzer.duty_cycle=0
 
 # MQTT Functions
-waiting_for_action = True  
+waiting_for_action = False  
 def wait_for_action():
     global waiting_for_action
     waiting_for_action = True
@@ -111,7 +111,7 @@ def message(client, topic, message):
     global waiting_for_action
     print(f"[MQTT] New message on topic {topic}: {message}")
     
-    if topic == aio_user + "/feeds/scanner.action":
+    if topic == aio_user + "/feeds/scanner.action" and waiting_for_action:
         if message == "0":  # not allowed
             print("[DEBUG] Access not allowed")
             lcd.clear()
@@ -251,7 +251,7 @@ while runnning:
     elif option == 1:  # Get Card UID
         uid = GetCardUID(scanner=nfc)
         lcd.clear()
-        lcd.message = f"Card found:\n" + f"{[i for i in uid]}".replace(" ", "")
+        lcd.message = f"Card found:\n" + f"{[i for i in uid]}".replace(" ", "").replace("[", "").replace("]", "")
         # Wait for button press for readability
         wait_for_button_press()
         
