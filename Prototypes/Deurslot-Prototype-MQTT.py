@@ -4,7 +4,7 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import asyncio, random
 # Connect to WiFi
 print("Connecting to WiFi")
-wifi.radio.connect(os.getenv("WIFI_SSID2"), os.getenv("WIFI_PASSWORD2"))
+wifi.radio.connect(os.getenv("WIFI_SSID"), os.getenv("WIFI_PASS"))
 print("Connected!")
 
 # Create socketpool
@@ -40,15 +40,16 @@ reed = digitalio.DigitalInOut(board.GP22)
 reed.direction = digitalio.Direction.INPUT
 print("succes")
 #===============================================================
-async def ToneBuzz():
+def ToneBuzz():
     buzzer.duty_cycle = 2**14
     buzzer.frequency = 300
+    time.sleep(4)
+    buzzer.duty_cycle = 0
     
 async def OpenDoor():
     actuator.value = True
     actuator2.value = True
-    await ToneBuzz()
-    await asyncio.sleep(6)
+    ToneBuzz()
     actuator.value = False
     actuator2.value = False
     print("done")
@@ -123,9 +124,17 @@ topics = ["open"]
 subscribe_to(topics)
 
 async def ListenReed(interval):
+    prevVal = None
     while True:
-        val = random.randint(0,1)
-        mqtt_client.publish(mqtt_topic,val)
+        val = reed.value
+        if prevVal != val:
+            print(val)
+            if val == True:
+                mqtt_client.publish(mqtt_topic,"0")
+                
+            else:
+                mqtt_client.publish(mqtt_topic,"1")
+        prevVal = val
         await asyncio.sleep(interval)
 
 async def ListenMQTTRequest(interval):
@@ -138,8 +147,10 @@ async def ListenMQTTRequest(interval):
             await asyncio.sleep(interval)
         
 async def main():
-    Reed_task = asyncio.create_task(ListenReed(2))
+    Reed_task = asyncio.create_task(ListenReed(1))
     MQTT_task = asyncio.create_task(ListenMQTTRequest(2))
     await asyncio.gather(Reed_task,MQTT_task)
 
 asyncio.run(main())
+
+
