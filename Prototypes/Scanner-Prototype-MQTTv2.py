@@ -38,10 +38,13 @@ def wait_for_button_press():
         if button_up.value or button_down.value or button_confirm.value:
             time.sleep(0.1)
             if button_up.value:
+                toneSuccess()
                 return "up"
             if button_down.value:
+                toneSuccess()
                 return "down"
             if button_confirm.value:
+                toneSuccess()
                 return "confirm"
 
 def navigate_options(options):
@@ -52,14 +55,11 @@ def navigate_options(options):
         lcd.message += options[index]
         action = wait_for_button_press()
         if action == "up":
-            toneSuccess()
             index = (index - 1) % len(options)
         elif action == "down":
-            toneSuccess()
             index = (index + 1) % len(options)
         elif action == "confirm":
             lcd.clear()
-            toneSuccess()
             return index
 
 # Buzzer Sounds
@@ -115,19 +115,19 @@ def message(client, topic, message):
         if message == "0":  # not allowed
             print("[DEBUG] Access not allowed")
             lcd.clear()
-            lcd.message = "ERROR\nNo access"
+            lcd.message = "ERROR\nNo access!"
             
         elif  message == "1":  # allowed => open door
             print("[DEBUG] Access allowed => opening door")
             lcd.clear()
-            lcd.message = "Opening Door"
+            lcd.message = "Opening Door..."
             open_door = aio_user + "/feeds/lock.open"
             mqtt_client.publish(open_door, 1)
             
         elif message == "2":  # check out
             print("[DEBUG] User checked out")
             lcd.clear()
-            lcd.message = "Checking out"
+            lcd.message = "Checking out..."
             # No check out logic yet
             
         else:  # invalid action
@@ -232,9 +232,9 @@ options = [
     "Quit Program"
 ]
 
+lcd.backlight = True
 runnning = True
 while runnning:
-    lcd.backlight = True
     option = navigate_options(options)
     
     if option == 0:  # Open Door
@@ -257,7 +257,9 @@ while runnning:
         
     elif option == 2:  # Quit Program
         running = False
+        lcd.backlight = False 
         mqtt_client.disconnect()
+        break
         
     else:
         toneFail()
@@ -266,6 +268,5 @@ while runnning:
         print("ERROR: Invalid action.")
         # Wait for button press for readability
         wait_for_button_press()
-        
+    
     lcd.clear()
-    lcd.backlight = False 
