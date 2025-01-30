@@ -114,11 +114,13 @@ def message(client, topic, message):
     if topic == aio_user + "/feeds/scanner.action" and waiting_for_action:
         if message == "0":  # not allowed
             print("[DEBUG] Access not allowed")
+            toneFail()
             lcd.clear()
             lcd.message = "ERROR\nNo access!"
             
         elif  message == "1":  # allowed => open door
             print("[DEBUG] Access allowed => opening door")
+            toneSuccess()
             lcd.clear()
             lcd.message = "Opening Door..."
             open_door = aio_user + "/feeds/lock.open"
@@ -126,12 +128,14 @@ def message(client, topic, message):
             
         elif message == "2":  # check out
             print("[DEBUG] User checked out")
+            toneSuccess()
             lcd.clear()
             lcd.message = "Checking out..."
             # No check out logic yet
             
         else:  # invalid action
             print("[DEBUG] Invalid action")
+            toneFail()
             lcd.clear()
             lcd.message = "ERROR\nTry again"
         
