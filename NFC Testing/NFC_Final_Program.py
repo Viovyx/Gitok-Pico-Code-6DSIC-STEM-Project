@@ -144,7 +144,7 @@ while True:
         if data:
             print(f"Data (bytes in hex): {data}")
             try:
-                print(f"Data (text): {bytearray.fromhex(''.join(data)).decode()}")
+                print(f"Data (text): {bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}")
             except:
                 print("Data (text): [ERROR Converting]")
 
