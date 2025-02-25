@@ -167,7 +167,7 @@ while True:
             
         data = None
         while not data:
-            user_input = input("Enter the data to write to block {block}: ")
+            user_input = input(f"Enter the data to write to block {block}: ")
             data = StringToByteArray(input_str=user_input, max_len=16)
         
         WriteBlock(scanner=nfc, block=block, key_b=key, data=data)
