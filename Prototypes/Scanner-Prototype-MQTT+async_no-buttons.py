@@ -202,7 +202,6 @@ buzzer = pwmio.PWMOut(board.GP13, variable_frequency=True)
 async def mqtt_keep_alive():
     while True:
         mqtt_client.loop()
-        print("t")
         await asyncio.sleep(0.01)
 
 async def main():
