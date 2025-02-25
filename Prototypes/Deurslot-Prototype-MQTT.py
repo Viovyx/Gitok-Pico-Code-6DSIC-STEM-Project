@@ -140,15 +140,11 @@ async def ListenReed(interval):
 async def ListenMQTTRequest(interval):
     while True:
         mqtt_client.loop()
-        try:
-            mqtt_client.message
-        except:
-            print("no messages")
-            await asyncio.sleep(interval)
+        await asyncio.sleep(interval)
         
 async def main():
     Reed_task = asyncio.create_task(ListenReed(1))
-    MQTT_task = asyncio.create_task(ListenMQTTRequest(2))
+    MQTT_task = asyncio.create_task(ListenMQTTRequest(0.01))
     await asyncio.gather(Reed_task,MQTT_task)
 
 asyncio.run(main())
