@@ -148,5 +148,3 @@ async def main():
     await asyncio.gather(Reed_task,MQTT_task)
 
 asyncio.run(main())
-
-
