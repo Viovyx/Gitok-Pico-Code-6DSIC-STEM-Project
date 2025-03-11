@@ -5,3 +5,6 @@ AIO_USER="Tapgate"
 AIO_KEY="aio_SVVQ61HhuAzANAn0gjaTixoF0KMy"
 BROKER="io.adafruit.com"
 PORT=1883
+
+CARD_KEY_A="KeyA"
+CARD_KEY_B="KeyB"

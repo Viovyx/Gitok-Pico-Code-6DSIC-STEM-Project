@@ -1,4 +1,4 @@
-import board, time
+import board, time, json
 import busio, pwmio, digitalio
 import os, ssl, socketpool, wifi
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
@@ -31,6 +31,36 @@ def GetCardUID(scanner: PN532_I2C):
             break
     print(f"[DEBUG] Found card with UID: {[i for i in uid]}")
     return uid
+
+def AuthBlock(scanner: PN532_I2C, block: int, key: bytearray, b: bool = False):
+    uid = GetCardUID(scanner=scanner)
+    print(f"Authenticating block {block} ...")
+    authenticated = scanner.mifare_classic_authenticate_block(uid, block, MIFARE_CMD_AUTH_B if b else MIFARE_CMD_AUTH_A, key)
+    if authenticated:
+        print("Authentication SUCCESFUL! \n")
+    else:
+        print("Authentication FAILED!")
+        
+    return authenticated
+
+def ReadBlock(scanner: PN532_I2C, block: int, key_a: bytearray):
+    authenticated = AuthBlock(scanner=scanner, block=block, key=key_a)
+    if authenticated:
+        print(f"Reading block {block}...")
+        try:
+            value = [hex(x)[2:] for x in scanner.mifare_classic_read_block(block)]
+            return value
+        except:
+            print("ERROR: Something went wrong while reading.")
+            return False
+
+def getCardPass(uid):
+    pass_block = 10
+    key_a = os.getenv("CARD_KEY_A")
+    data = ReadBlock(nfc, pass_block, key_a)
+    if data:
+        card_pass = bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()
+        return card_pass
 
 # Buzzer Sounds
 def toneSuccess():
@@ -79,16 +109,19 @@ def publish(mqtt_client, userdata, topic, pid):
 
 def message(client, topic, message):
     global waiting_for_action
-    print(f"[MQTT] New message on topic {topic}: {message}")
+    print(f"[MQTT] New message on topic {topic}: {message.payload.decode()}")
     
+    action_id = json.loads(message.payload.decode())["action"]  # {"pass":"DSQDad", "action":1}
+    action = ["failed", "successful", "checkout"][action_id]
+
     if topic == aio_user + "/feeds/scanner.action" and waiting_for_action:
-        if message == "0":  # not allowed
+        if action == "failed":  # not allowed
             print("[DEBUG] Access not allowed")
             toneFail()
             lcd.clear()
             lcd.message = "ERROR\nNo access!"
             
-        elif  message == "1":  # allowed => open door
+        elif action == "successful":  # allowed => open door
             print("[DEBUG] Access allowed => opening door")
             toneSuccess()
             lcd.clear()
@@ -96,7 +129,7 @@ def message(client, topic, message):
             open_door = aio_user + "/feeds/lock.open"
             mqtt_client.publish(open_door, 1)
             
-        elif message == "2":  # check out
+        elif action == "checkout":  # check out
             print("[DEBUG] User checked out")
             toneSuccess()
             lcd.clear()
@@ -206,7 +239,9 @@ runnning = True
 while runnning:
     uid = GetCardUID(scanner=nfc)
     check_card = aio_user + "/feeds/scanner.checkcard"
-    mqtt_client.publish(check_card, f"{[i for i in uid]}".replace(" ", ""))
+    card_uid = f"{[i for i in uid]}".replace(" ", "")
+    card_pass = getCardPass(card_uid)
+    mqtt_client.publish(check_card, {"uid":card_uid, "pass":card_pass})
     
     lcd.clear()
     lcd.message = "Waiting for\nresponse..."
