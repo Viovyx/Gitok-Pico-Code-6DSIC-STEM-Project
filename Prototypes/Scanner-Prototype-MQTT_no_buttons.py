@@ -1,6 +1,7 @@
-import board, time, json
+import board, time, json, requests
 import busio, pwmio, digitalio
 import os, ssl, socketpool, wifi
+from datetime import datetime
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_character_lcd.character_lcd as characterlcd
 from digitalio import DigitalInOut
@@ -21,16 +22,26 @@ def InitiateNFC(i2c_sda: Pin, i2c_scl: Pin):
     return pn532
 
 def GetCardUID(scanner: PN532_I2C):
-    lcd.clear()
-    lcd.message = "Scan Your\nAccess Card"
     print("[DEBUG] Waiting for card")
     while True:
         mqtt_client.loop()
         uid = scanner.read_passive_target(timeout=0.5)
         if uid is not None:
             break
-    print(f"[DEBUG] Found card with UID: {[i for i in uid]}")
+        if button_up.value or button_down.value or button_confirm.value:
+            uid = "door"
+    if uid != "door":
+        print(f"[DEBUG] Found card with UID: {[i for i in uid]}")
+    else:
+        print("[DEBUG] Opening choose door menu...")
+
     return uid
+
+def GetDoors():
+    api_url = api_base_url + "devices?filter=Type,eq,lock"
+    response = requests.get(api_url, headers=headers)
+    response = response.json()['records']
+    return response
 
 def AuthBlock(scanner: PN532_I2C, block: int, key: bytearray, b: bool = False):
     uid = GetCardUID(scanner=scanner)
@@ -74,6 +85,43 @@ def toneFail():
     buzzer.frequency = 300
     time.sleep(0.3)
     buzzer.duty_cycle=0
+
+# Button + lcd nav funtions
+def wait_for_button_press(start_time, timeout):
+    while ((datetime.now() - start_time).total_seconds() > timeout):        
+        if button_up.value or button_down.value or button_confirm.value:
+            time.sleep(0.1)
+            if button_up.value:
+                toneSuccess()
+                return "up"
+            if button_down.value:
+                toneSuccess()
+                return "down"
+            if button_confirm.value:
+                toneSuccess()
+                return "confirm"
+    
+    return False
+
+def navigate_options(options, timeout):
+    start_time = datetime.now()
+    index = 0
+    while ((datetime.now() - start_time).total_seconds() > timeout):
+        lcd.clear()
+        lcd.message = "Select Action:\n"
+        lcd.message += options[index]
+        action = wait_for_button_press(start_time, timeout)
+
+        if not action:
+            return False
+
+        if action == "up":
+            index = (index - 1) % len(options)
+        elif action == "down":
+            index = (index + 1) % len(options)
+        elif action == "confirm":
+            lcd.clear()
+            return index
 
 
 # ---------------
@@ -138,7 +186,6 @@ def message(client, topic, message):
             toneSuccess()
             lcd.clear()
             lcd.message = "Checking out..."
-            # No check out logic yet
             
         else:  # invalid action
             print("[DEBUG] Invalid action")
@@ -161,6 +208,10 @@ aio_user = os.getenv("AIO_USER")
 aio_key = os.getenv("AIO_KEY")
 aio_broker = os.getenv("BROKER")
 aio_port = os.getenv("PORT")
+
+# API
+headers = {"X-API-KEY":os.getenv('API_KEY')}
+api_base_url = "https://api.tapgate.tech/api.php/records/"
 
 # Set up MQTT Client
 mqtt_client = MQTT.MQTT(
@@ -233,18 +284,39 @@ buzzer = pwmio.PWMOut(board.GP13, variable_frequency=True)
 # Program
 # -------------
 toneSuccess()
-
 lcd.backlight = True
-runnning = True
-while runnning:
-    uid = GetCardUID(scanner=nfc)
-    check_card = aio_user + "/feeds/scanner.checkcard"
-    card_uid = f"{[i for i in uid]}".replace(" ", "")
-    card_pass = getCardPass(card_uid, pass_block=16)
-    mqtt_client.publish(check_card, {"uid":card_uid, "pass":card_pass})
-    
+runnning = False
+
+doors = GetDoors()
+if len(doors) <= 0:
     lcd.clear()
-    lcd.message = "Waiting for\nresponse..."
-    wait_for_action()
+    lcd.message = "No doors found.\nStopping program..."
+    time.sleep(2)
+else:
+    door = GetDoors()[0]
+    runnning = True
+
+while runnning:
+    lcd.clear()
+    lcd.message = "Scan Card...\n"
+    lcd.message += door["Name"]
+
+    uid = GetCardUID(scanner=nfc)
+    if uid == "door":
+        doors = GetDoors()
+        choice_index = navigate_options([door["Name"] for door in doors], 10)
+        if choice_index:
+            door = doors[choice_index]
+    else:
+        check_card = aio_user + "/feeds/scanner.checkcard"
+        card_uid = f"{[i for i in uid]}".replace(" ", "")
+        card_pass = getCardPass(card_uid, pass_block=16)
+        door_id = door["id"]
+        mqtt_client.publish(check_card, {"uid":card_uid, "pass":card_pass, "door":{door_id}})
+        
+        lcd.clear()
+        lcd.message = "Waiting for\nresponse..."
+        wait_for_action()
+
     time.sleep(2)
     
