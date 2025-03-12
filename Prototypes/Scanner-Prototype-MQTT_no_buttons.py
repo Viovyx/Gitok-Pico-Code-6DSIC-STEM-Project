@@ -54,8 +54,7 @@ def ReadBlock(scanner: PN532_I2C, block: int, key_a: bytearray):
             print("ERROR: Something went wrong while reading.")
             return False
 
-def getCardPass(uid):
-    pass_block = 10
+def getCardPass(uid, pass_block):
     key_a = os.getenv("CARD_KEY_A")
     data = ReadBlock(nfc, pass_block, key_a)
     if data:
@@ -240,7 +239,7 @@ while runnning:
     uid = GetCardUID(scanner=nfc)
     check_card = aio_user + "/feeds/scanner.checkcard"
     card_uid = f"{[i for i in uid]}".replace(" ", "")
-    card_pass = getCardPass(card_uid)
+    card_pass = getCardPass(card_uid, pass_block=10)
     mqtt_client.publish(check_card, {"uid":card_uid, "pass":card_pass})
     
     lcd.clear()
