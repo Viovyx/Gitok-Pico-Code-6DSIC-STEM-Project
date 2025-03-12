@@ -240,7 +240,7 @@ while runnning:
     uid = GetCardUID(scanner=nfc)
     check_card = aio_user + "/feeds/scanner.checkcard"
     card_uid = f"{[i for i in uid]}".replace(" ", "")
-    card_pass = getCardPass(card_uid, pass_block=10)
+    card_pass = getCardPass(card_uid, pass_block=16)
     mqtt_client.publish(check_card, {"uid":card_uid, "pass":card_pass})
     
     lcd.clear()
