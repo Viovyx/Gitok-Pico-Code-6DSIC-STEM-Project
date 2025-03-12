@@ -75,6 +75,11 @@ def toneFail():
     time.sleep(0.3)
     buzzer.duty_cycle=0
 
+
+# ---------------
+# Network + MQTT
+# ---------------
+
 # MQTT Functions
 waiting_for_action = False  
 def wait_for_action():
@@ -142,10 +147,6 @@ def message(client, topic, message):
             lcd.message = "ERROR\nTry again"
         
         waiting_for_action = False
-
-# ---------------
-# Network + MQTT
-# ---------------
 
 # Connect to WiFi
 print(f"[WIFI] Connecting to WiFi ({os.getenv('WIFI_SSID')})")
