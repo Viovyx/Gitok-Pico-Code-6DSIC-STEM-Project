@@ -82,6 +82,40 @@ def WriteBlock(scanner: PN532_I2C, block: int, key_b: bytearray, data: bytearray
         except:
             print("ERROR: Something went wrong while writing the data.")
             return False 
+        
+def CreateNewTrailer(scanner: PN532_I2C, block: int,  key_b: bytearray, new_key_a: bytearray, new_key_b: bytearray, access_bits: bytearray):
+    trailer = new_key_a + access_bits + new_key_b
+    sector = math.ceil((block+1)/4)
+    sector_block = 4*sector - 1
+
+    print(f"Writing new trailer for sector {sector}...")
+    if WriteBlock(scanner=scanner, block=sector_block, key_b=key_b, data=trailer):
+        print(f"[SUCCESS] Wrote new trailer for sector {sector} (block {sector_block})")
+        print("Key A\t Access Bits\t Key B")
+        print(f"{new_key_a}\t {access_bits}\t {new_key_b}")
+        return True
+    else:
+        print(f"[ERROR] Could not write trailer for sector {sector} (block {sector_block})")
+        return False
+
+def SetCardPass(scanner, update_trailer, block, key_b, new_key_a, new_key_b, access_bits, user_id, card_pass):
+    lcd.message += "Hold Firmly!"
+
+    if update_trailer:
+        CreateNewTrailer(scanner=scanner, block=block, key_b=key_b, new_key_a=new_key_a, new_key_b=new_key_b, access_bits=access_bits)
+
+    # Writing CardPass
+    if WriteBlock(scanner=scanner, block=block, key_b=new_key_b, data=card_pass):
+        # Send Data to MQTT
+        card_pass_feed = aio_user + "/feeds/scanner.setcardpass"
+        card_uid = f"{[i for i in GetCardUID(scanner=nfc)]}".replace(" ", "")
+        mqtt_client.publish(card_pass_feed, {"uid":card_uid, "pass":card_pass_text, "user":user_id})
+
+        print(f"[SUCCESS] Wrote Card Pass to block {block}")
+        return True
+    else:
+        print(f"[ERROR] Could not write Card Pass to block {block}")
+        return False
 
 # API
 def GetUserId(email):
@@ -92,37 +126,6 @@ def GetUserId(email):
     if len(response) > 0:
         user = response[0]
         return user["id"]
-
-# CardPass
-def SetCardPass(scanner, block, key_b, new_key_a, new_key_b, access_bits, user_id, card_pass):
-    lcd.clear()
-    lcd.message = "Scan Card...\n" + "Hold Firmly!"
-
-    # Creating and Writing new trailer
-    trailer = new_key_a + access_bits + new_key_b
-    sector = math.ceil((block+1)/4)
-    sector_block = 4*sector - 1
-
-    print(f"Writing new trailer for sector {sector}...")
-    if WriteBlock(scanner=scanner, block=sector_block, key_b=key_b, data=trailer):
-        print(f"[SUCCESS] Wrote new trailer for sector {sector} (block {sector_block})")
-        print("Key A\t Access Bits\t Key B")
-        print(f"{new_key_a}\t {access_bits}\t {new_key_b}")
-    else:
-        print(f"[ERROR] Could not write trailer for sector {sector} (block {sector_block})")
-        return
-        
-    # Writing CardPass
-    if WriteBlock(scanner=scanner, block=block, key_b=new_key_b, data=card_pass):
-        print(f"[SUCCESS] Wrote Card Pass to block {block}")
-    else:
-        print(f"[ERROR] Could not write Card Pass to block {block}")
-
-    # Send Data to MQTT
-    # Getting UID of card
-    card_pass_feed = aio_user + "/feeds/scanner.setcardpass"
-    card_uid = f"{[i for i in GetCardUID(scanner=nfc)]}".replace(" ", "")
-    mqtt_client.publish(card_pass_feed, {"uid":card_uid, "pass":card_pass_text, "user":user_id})
 
 # Buzzer Sounds
 def toneSuccess():
@@ -279,49 +282,59 @@ while not block:
         else:
             block = default_block
 
-# Original Key
-key = None 
-while not key:
-    user_input = input(f"Enter original key B (Enter 'b' for bits mode) [{default_key}]: ")
-    if user_input.lower() == "b":
-        key = BitsToByteArray(length=6)
-    else:
-        if user_input != "":
-            key = StringToByteArray(input_str=user_input, max_len=6)
-        else:
-            key = bytearray(default_key)
+# Update Trailer?
+user_input = input(f"Do you wish to update the trailer for sector {math.ceil((block+1)/4)}? (y/N): ")
+if user_input.lower() == "y":
+    update_trailer = True
+else:
+    print(f"Default keys will be used: KeyA='{default_key_a}' & KeyB='{default_key_b}'")
+    update_trailer = False
 
-# New Keys
-new_key_a = None
-while not new_key_a:
-    user_input = input(f"Enter new key A (Enter 'b' for bits mode) [{default_key_a}]: ")
-    if user_input.lower() == "b":
-        new_key_a = BitsToByteArray(length=6)
-    else:
-        if user_input != "":
-            new_key_a = StringToByteArray(input_str=user_input, max_len=6)
+if update_trailer:
+    # Original Key
+    key = None 
+    while not key:
+        user_input = input(f"Enter original key B (Enter 'b' for bits mode) [{default_key}]: ")
+        if user_input.lower() == "b":
+            key = BitsToByteArray(length=6)
         else:
-            new_key_a = StringToByteArray(default_key_a, max_len=6)
+            if user_input != "":
+                key = StringToByteArray(input_str=user_input, max_len=6)
+            else:
+                key = bytearray(default_key)
 
-new_key_b = None
-while not new_key_b:
-    user_input = input(f"Enter new key B (Enter 'b' for bits mode) [{default_key_b}]: ")
-    if user_input.lower() == "b":
-        new_key_b = BitsToByteArray(length=6)
-    else:
-        if user_input != "":
-            new_key_b = StringToByteArray(input_str=user_input, max_len=6)
+    # New Keys
+    new_key_a = None
+    while not new_key_a:
+        user_input = input(f"Enter new key A (Enter 'b' for bits mode) [{default_key_a}]: ")
+        if user_input.lower() == "b":
+            new_key_a = BitsToByteArray(length=6)
         else:
-            new_key_b = StringToByteArray(default_key_b, max_len=6)
+            if user_input != "":
+                new_key_a = StringToByteArray(input_str=user_input, max_len=6)
+            else:
+                new_key_a = StringToByteArray(default_key_a, max_len=6)
 
-# Access Bits
-access_bits = None
-while not access_bits:
-    user_input = input(f"Use the default access bits [{default_access_bits}]? (Y/n): ")
-    if user_input.lower() == "n":
-        access_bits = BitsToByteArray(length=4)
-    else:
-        access_bits = bytearray(default_access_bits)
+    new_key_b = None
+    while not new_key_b:
+        user_input = input(f"Enter new key B (Enter 'b' for bits mode) [{default_key_b}]: ")
+        if user_input.lower() == "b":
+            new_key_b = BitsToByteArray(length=6)
+        else:
+            if user_input != "":
+                new_key_b = StringToByteArray(input_str=user_input, max_len=6)
+            else:
+                new_key_b = StringToByteArray(default_key_b, max_len=6)
+
+    # Access Bits
+    access_bits = None
+    while not access_bits:
+        user_input = input(f"Use the default access bits [{default_access_bits}]? (Y/n): ")
+        if user_input.lower() == "n":
+            access_bits = BitsToByteArray(length=4)
+        else:
+            access_bits = bytearray(default_access_bits)
+
 
 # User id
 user_id = None
@@ -341,7 +354,10 @@ print("===================================")
 print(" Info Confirmed!")
 print(" Follow instruction on scanner...")
 print("===================================")
-SetCardPass(scanner=nfc, block=block, key_b=key, new_key_a=new_key_a, new_key_b=new_key_b, access_bits=access_bits, user_id=user_id, card_pass=card_pass)
+
+lcd.clear()
+lcd.message = "Scan Card...\n"
+SetCardPass(scanner=nfc, update_trailer=update_trailer, block=block, key_b=key, new_key_a=new_key_a, new_key_b=new_key_b, access_bits=access_bits, user_id=user_id, card_pass=card_pass)
 
 lcd.clear()
 lcd.message = f"Password Set!\n{card_pass}"
