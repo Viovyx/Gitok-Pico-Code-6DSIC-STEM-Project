@@ -1,6 +1,7 @@
-import board, time, math, json, requests
+import board, time, math, json
 import busio, pwmio, digitalio
 import os, ssl, socketpool, wifi
+import adafruit_requests
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_character_lcd.character_lcd as characterlcd
 from digitalio import DigitalInOut
@@ -120,12 +121,12 @@ def SetCardPass(scanner, update_trailer, block, key_b, new_key_a, new_key_b, acc
 # API
 def GetUserId(email):
     api_url = api_base_url + f"users?filter=Email,eq,{email}"
-    response = requests.get(api_url, headers=headers)
-    response = response.json()['records']
+    with requests.get(api_url, headers=headers) as response:
+        response = response.json()['records']
     
-    if len(response) > 0:
-        user = response[0]
-        return user["id"]
+        if len(response) > 0:
+            user = response[0]
+            return user["id"]
 
 # Buzzer Sounds
 def toneSuccess():
@@ -174,6 +175,10 @@ print("[WIFI] Connected!")
 
 # Create socketpool
 pool = socketpool.SocketPool(wifi.radio)
+ssl_context = ssl.create_default_context()
+
+# Requests
+requests = adafruit_requests.Session(pool, ssl_context)
 
 # Get adafruit.io credentials
 aio_user = os.getenv("AIO_USER")
@@ -191,7 +196,7 @@ mqtt_client = MQTT.MQTT(
     username=aio_user,
     password=aio_key,
     socket_pool=pool,
-    ssl_context=ssl.create_default_context(),
+    ssl_context=ssl_context,
 )
 
 # Connect callback handlers to mqtt_client
@@ -294,7 +299,7 @@ if update_trailer:
     # Original Key
     key = None 
     while not key:
-        user_input = input(f"Enter original key B (Enter 'b' for bits mode) [{default_key}]: ")
+        user_input = input(f"Enter original key B (Enter 'b' for bits mode) {default_key}: ")
         if user_input.lower() == "b":
             key = BitsToByteArray(length=6)
         else:
