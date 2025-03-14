@@ -1,7 +1,6 @@
 import board, time, math, json
 import busio, pwmio, digitalio
 import os, ssl, socketpool, wifi
-import adafruit_requests
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_character_lcd.character_lcd as characterlcd
 from digitalio import DigitalInOut
@@ -120,13 +119,14 @@ def SetCardPass(scanner, update_trailer, block, key_b, new_key_a, new_key_b, acc
 
 # API
 def GetUserId(email):
-    api_url = api_base_url + f"users?filter=Email,eq,{email}"
-    with requests.get(api_url, headers=headers) as response:
-        response = response.json()['records']
+    # api_url = api_base_url + f"users?filter=Email,eq,{email}"
+    # with requests.get(api_url, headers=headers) as response:
+        # response = response.json()['records']
     
-        if len(response) > 0:
-            user = response[0]
-            return user["id"]
+        # if len(response) > 0:
+            # user = response[0]
+            # return user["id"]
+    return 1
 
 # Buzzer Sounds
 def toneSuccess():
@@ -176,9 +176,6 @@ print("[WIFI] Connected!")
 # Create socketpool
 pool = socketpool.SocketPool(wifi.radio)
 ssl_context = ssl.create_default_context()
-
-# Requests
-requests = adafruit_requests.Session(pool, ssl_context)
 
 # Get adafruit.io credentials
 aio_user = os.getenv("AIO_USER")
@@ -268,7 +265,7 @@ default_key_b = os.getenv("CARD_KEY_B")
 default_access_bits = [8,119,143,255]
 
 lcd.clear()
-lcd.message = "Follow instructions\nin terminal..."
+lcd.message = "Follow steps\nin terminal..."
 print("==============================================================")
 print(" Set KeyCard Password by following these steps.")
 print(" Press ENTER without entering anything to use default values.")

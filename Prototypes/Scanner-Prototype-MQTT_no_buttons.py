@@ -1,9 +1,9 @@
-import board, time, json, requests
+import board, time, json
 import busio, pwmio, digitalio
 import os, ssl, socketpool, wifi
-from datetime import datetime
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_character_lcd.character_lcd as characterlcd
+from adafruit_datetime import datetime
 from digitalio import DigitalInOut
 from adafruit_pn532.i2c import PN532_I2C
 from adafruit_pn532.adafruit_pn532 import MIFARE_CMD_AUTH_A, MIFARE_CMD_AUTH_B
@@ -23,11 +23,13 @@ def InitiateNFC(i2c_sda: Pin, i2c_scl: Pin):
 
 def GetCardUID(scanner: PN532_I2C):
     print("[DEBUG] Waiting for card")
-    while True:
+    uid = None 
+    while not uid:
         mqtt_client.loop()
         uid = scanner.read_passive_target(timeout=0.5)
         if uid is not None:
             break
+        print(button_confirm.value)
         if button_up.value or button_down.value or button_confirm.value:
             uid = "door"
     if uid != "door":
@@ -38,9 +40,10 @@ def GetCardUID(scanner: PN532_I2C):
     return uid
 
 def GetDoors():
-    api_url = api_base_url + "devices?filter=Type,eq,lock"
-    response = requests.get(api_url, headers=headers)
-    response = response.json()['records']
+    # api_url = api_base_url + "devices?filter=Type,eq,lock"
+    # response = requests.get(api_url, headers=headers)
+    # response = response.json()['records']
+    response = [{"Name":"Door1"},{"Name":"Door2"},{"Name":"Door3"}]
     return response
 
 def AuthBlock(scanner: PN532_I2C, block: int, key: bytearray, b: bool = False):
