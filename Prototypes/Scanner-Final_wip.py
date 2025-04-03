@@ -172,11 +172,11 @@ def publish(mqtt_client, userdata, topic, pid):
 def message(client, topic, message):
     global waiting_for_action
     print(f"[MQTT] New message on topic {topic}: {message}")
-    
-    action_id = json.loads(message)["action"]  # {"user":1, "action":1}
-    action = ["failed", "successful", "checkout"][action_id]
 
     if topic == aio_user + "/feeds/scanner.action" and waiting_for_action:
+        action_id = json.loads(message)["action"]  # {"user":1, "action":1}
+        action = ["failed", "successful", "checkout"][action_id]
+        
         if action == "failed":  # not allowed
             print("[DEBUG] Access not allowed")
             toneFail()
@@ -187,7 +187,7 @@ def message(client, topic, message):
             print("[DEBUG] Access allowed => opening door")
             toneSuccess()
             lcd.clear()
-            lcd.message = "Opening Door..."
+            lcd.message = "Opening Door...\nPlease wait"
             open_door = aio_user + "/feeds/lock.open"
             mqtt_client.publish(open_door, 1)
             
@@ -195,7 +195,7 @@ def message(client, topic, message):
             print("[DEBUG] User checked out")
             toneSuccess()
             lcd.clear()
-            lcd.message = "Checking out..."
+            lcd.message = "Checking out...\nPlease wait"
             # No check out logic yet
             
         else:  # invalid action
@@ -297,19 +297,24 @@ while runnning:
     lcd.clear()
     lcd.message = "Scan Your\nAccess Card"
     
-    uid = GetCardUID(scanner=nfc)
-    card_uid = f"{[i for i in uid]}".replace(" ", "")
+    # uid = GetCardUID(scanner=nfc)
+    # card_uid = f"{[i for i in uid]}".replace(" ", "")
+    input("Press enter...")
+    card_uid = "[255.255.255.255]"
     
-    ip = wifi.radio.ipv4_address
+    # ip = str(wifi.radio.ipv4_address)
+    ip = "192.168.0.10"
     key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
-    data = ReadBlock(scanner=nfc, block=16, key_a=key_a)
+    # data = ReadBlock(scanner=nfc, block=16, key_a=key_a)
     
-    if data:
-        card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
+    # if data:
+    if True:
+        # card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
+        card_pass = "Pass1"
         mqtt_client.publish(check_card_feed, str({"uid":card_uid, "pass":card_pass, "ip":ip}).replace("'", '"'))
     
         lcd.clear()
-        lcd.message = "Waiting for\nresponse..."
+        lcd.message = "Loading...\nPlease wait"  # Informational Waiting Message
         wait_for_action()
         time.sleep(2)
     else:
