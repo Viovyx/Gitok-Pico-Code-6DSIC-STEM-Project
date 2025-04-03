@@ -8,5 +8,6 @@ PORT=1883
 
 CARD_KEY_A="KeyA"
 CARD_KEY_B="KeyB"
+CARD_PASS_BLOCK=16
 
 API_KEY="Pr0duct!onCol13ct!0nWr17tenDen!ed!$r@el"

@@ -303,7 +303,7 @@ while runnning:
     
     ip = str(wifi.radio.ipv4_address)
     key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
-    data = ReadBlock(scanner=nfc, block=16, key_a=key_a)
+    data = ReadBlock(scanner=nfc, block=os.getenv("CARD_PASS_BLOCK"), key_a=key_a)
     
     if data:
         card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
