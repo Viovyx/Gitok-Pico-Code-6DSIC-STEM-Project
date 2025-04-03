@@ -86,7 +86,7 @@ def publish(mqtt_client, userdata, topic, pid):
 
 def message(client, topic, message):
     if topic == aio_user + "/feeds/lock.open":
-        data = json.loads(message)  # {"user":1, "action":1, "door_ip":"192.168.0.11"}
+        data = json.loads(message)  # {"action":1, "door_ip":"192.168.0.11"}
         action = data["action"]
         ip = data["door_ip"]
         
