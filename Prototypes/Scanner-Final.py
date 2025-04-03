@@ -174,7 +174,8 @@ def message(client, topic, message):
     print(f"[MQTT] New message on topic {topic}: {message}")
 
     if topic == aio_user + "/feeds/scanner.action" and waiting_for_action:
-        action_id = json.loads(message)["action"]  # {"user":1, "action":1}
+        data = json.loads(message)  # {"user":1, "action":1, "door_ip":"192.168.0.11"}
+        action_id = data["action"]
         action = ["failed", "successful", "checkout"][action_id]
         
         if action == "failed":  # not allowed
@@ -189,14 +190,14 @@ def message(client, topic, message):
             lcd.clear()
             lcd.message = "Opening Door...\nPlease wait"
             open_door = aio_user + "/feeds/lock.open"
-            mqtt_client.publish(open_door, 1)
+            data_rm_user = data.pop("user")
+            mqtt_client.publish(open_door, str(data).replace("'", '"'))
             
         elif action == "checkout":  # check out
             print("[DEBUG] User checked out")
             toneSuccess()
             lcd.clear()
             lcd.message = "Checking out...\nPlease wait"
-            # No check out logic yet
             
         else:  # invalid action
             print("[DEBUG] Invalid action")
