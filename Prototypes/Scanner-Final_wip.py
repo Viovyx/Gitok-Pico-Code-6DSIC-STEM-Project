@@ -300,12 +300,13 @@ while runnning:
     uid = GetCardUID(scanner=nfc)
     card_uid = f"{[i for i in uid]}".replace(" ", "")
     
+    ip = wifi.radio.ipv4_address
     key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
     data = ReadBlock(scanner=nfc, block=16, key_a=key_a)
     
     if data:
-        card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}"
-        mqtt_client.publish(check_card_feed, str({"uid":card_uid, "pass":card_pass}).replace("'", '"'))
+        card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
+        mqtt_client.publish(check_card_feed, str({"uid":card_uid, "pass":card_pass, "ip":ip}).replace("'", '"'))
     
         lcd.clear()
         lcd.message = "Waiting for\nresponse..."
