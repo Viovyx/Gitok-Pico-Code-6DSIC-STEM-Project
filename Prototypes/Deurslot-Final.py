@@ -130,15 +130,19 @@ subscribe_to(topics)
 
 async def ListenReed(interval):
     prevVal = None
+    data = {"status":"0", "door_ip":str(wifi.radio.ipv4_address)}
     while True:
         val = reed.value
         if prevVal != val:
             print(val)
+            
             if val == True:
-                mqtt_client.publish(mqtt_topic,"0")
-                
+                data["status"] = "0"
             else:
-                mqtt_client.publish(mqtt_topic,"1")
+                data["status"] = "1"
+                
+            mqtt_client.publish(mqtt_topic, str(data).replace("'",'"'))
+            
         prevVal = val
         await asyncio.sleep(interval)
 
