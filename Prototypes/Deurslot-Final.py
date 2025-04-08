@@ -137,9 +137,9 @@ async def ListenReed(interval):
             print(val)
             
             if val == True:
-                data["status"] = "0"
-            else:
                 data["status"] = "1"
+            else:
+                data["status"] = "2"
                 
             mqtt_client.publish(mqtt_topic, str(data).replace("'",'"'))
             
