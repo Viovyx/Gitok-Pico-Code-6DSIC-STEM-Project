@@ -189,9 +189,6 @@ def message(client, topic, message):
             toneSuccess()
             lcd.clear()
             lcd.message = "Opening Door...\nPlease wait"
-            open_door = aio_user + "/feeds/lock.open"
-            data_rm_user = data.pop("user")
-            mqtt_client.publish(open_door, str(data).replace("'", '"'))
             
         elif action == "checkout":  # check out
             print("[DEBUG] User checked out")
