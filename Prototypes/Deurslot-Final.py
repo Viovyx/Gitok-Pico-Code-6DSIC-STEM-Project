@@ -86,11 +86,8 @@ def publish(mqtt_client, userdata, topic, pid):
 
 def message(client, topic, message):
     if topic == aio_user + "/feeds/lock.open":
-        data = json.loads(message)  # {"action":1, "door_ip":"192.168.0.11"}
-        action = data["action"]
-        ip = data["door_ip"]
-        
-        if action == 1 and ip == str(wifi.radio.ipv4_address):
+        ip = str(message)  # "192.168.0.11"
+        if ip == str(wifi.radio.ipv4_address):
             asyncio.create_task(OpenDoor())
             print("open")
         
