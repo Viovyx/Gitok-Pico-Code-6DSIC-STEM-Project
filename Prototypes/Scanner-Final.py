@@ -288,27 +288,32 @@ buzzer = pwmio.PWMOut(board.GP13, variable_frequency=True)
 # -------------
 toneSuccess()
 
+check_card_feed = aio_user + "/feeds/scanner.checkcard"
+ip = str(wifi.radio.ipv4_address)
+key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
+pass_block=os.getenv("CARD_PASS_BLOCK")
+
 lcd.backlight = True
 runnning = True
-check_card_feed = aio_user + "/feeds/scanner.checkcard"
+
 while runnning:
     lcd.clear()
     lcd.message = "Scan Your\nAccess Card"
     
     uid = GetCardUID(scanner=nfc)
-    card_uid = f"{[i for i in uid]}".replace(" ", "")
-    
-    ip = str(wifi.radio.ipv4_address)
-    key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
-    data = ReadBlock(scanner=nfc, block=os.getenv("CARD_PASS_BLOCK"), key_a=key_a)
+    card_uid = f"{[i for i in uid]}".replace(" ", "").replace(",", ".")
+    data = ReadBlock(scanner=nfc, block=pass_block, key_a=key_a)
     
     if data:
         card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
         mqtt_client.publish(check_card_feed, str({"uid":card_uid, "pass":card_pass, "ip":ip}).replace("'", '"'))
     
         lcd.clear()
-        lcd.message = "Loading...\nPlease wait"  # Informational Waiting Message
+        lcd.message = "Loading...\nPlease wait"
         wait_for_action()
         time.sleep(2)
     else:
         print("[ERROR] No Pass Found!")
+        lcd.clear()
+        lcd.message = f"No UniquePass\non block {pass_block}"
+        time.sleep(2)
