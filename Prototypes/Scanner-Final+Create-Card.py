@@ -154,7 +154,7 @@ def configureNewCard():
     key_b = None
     while not key_b:
         user_input = input("[1] Enter Admin Key (key_b): ")
-        key_b = StringToByteArray(key_b, max_len=6)
+        key_b = StringToByteArray(user_input, max_len=6)
     
     user_input = input("[2] Should a new card trailer be set? This should be done for a completely new card! (y/N): ")
     if user_input.lower() == "y":
