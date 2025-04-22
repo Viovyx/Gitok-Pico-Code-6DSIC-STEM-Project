@@ -141,13 +141,11 @@ def getCardPass(scanner):
 
 def configureNewCard():
     lcd.clear()
-    lcd.message = "Connect to pc\nFollow steps!"
+    lcd.message = "Connect to PC\n& Follow Steps!"
 
     print("\nConfiguring new card. Follow the steps precisely!")
     print("-----------------------------------------------------\n")
 
-    key_a = os.getenv("CARD_KEY_A")
-    bits = list(map(int, (os.getenv("CARD_BITS")).split(",")))
     block = os.getenv("CARD_PASS_BLOCK")
     sector = math.floor(block/4)+1
 
@@ -156,8 +154,11 @@ def configureNewCard():
         user_input = input("[1] Enter Admin Key (key_b): ")
         key_b = StringToByteArray(user_input, max_len=6)
     
-    user_input = input("[2] Should a new card trailer be set? This should be done for a completely new card! (y/N): ")
+    user_input = input("[2] Should the current admin key on this card be updated? This should be run if this is a completely new card! (y/N): ")
     if user_input.lower() == "y":
+        key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
+        bits = bytearray(list(map(int, (os.getenv("CARD_BITS")).split(","))))
+        
         prev_key_b = None
         while not prev_key_b:
             user_input = input("[2.1] Enter current key_b (Press enter for factory default or enter 'b' for bits mode): ")
@@ -181,17 +182,17 @@ def configureNewCard():
     card_pass = None
     while not card_pass:
         user_input = input("[3] Enter a card pass. This will be used to identify the card: ")
-        card_pass = StringToByteArray(user_input, max_len=6)
+        card_pass = StringToByteArray(user_input, max_len=16)
 
     lcd.clear()
     lcd.message = "Creating Card\nPlease wait..."
-    uid = GetCardUID()
+    uid = GetCardUID(scanner=nfc)
     card_uid = card_uid = f"{[i for i in uid]}".replace(" ", "")
     if WriteBlock(scanner=nfc, block=block, key_b=key_b, data=card_pass):
         lcd.clear()
         lcd.message = "Card Creation\nSuccessful!"
         toneSuccess()
-        time.sleep(1)
+        card_pass = getCardPass(scanner=nfc)
         return {"uid":card_uid, "pass":card_pass}
     else:
         lcd.clear()
@@ -420,17 +421,32 @@ while runnning:
                 time.sleep(2)
     elif choice == "Create Card":
         card = configureNewCard()
-        if card:
+        card_pass = getCardPass(scanner=nfc)
+        if card and card_pass == card["pass"]:
+            lcd.clear()
+            lcd.message = f"{card["uid"]}\n{card["pass"]}"
+            
             print("[DEBUG] New card created succesfully!")
             print("[INFO] Go to the web panel and create a new keycard with following info:")
             print(f"CardUID: {card["uid"]}")
             print(f"UniquePass: {card["pass"]}")
+            time.sleep(2)
+        else:
+            toneFail()
+            print("[DEBUG] New card creation failed! Password was not set correctly.")
+            lcd.clear()
+            lcd.message = "Failed to\nSet Pass!"
     elif choice == "Card Info":
+        lcd.clear()
+        lcd.message = "Connect to PC\n& Enter Key!"
+        
         key_b = None
         while not key_b:
             user_input = input("Enter Admin key (key_b): ")
             key_b = StringToByteArray(user_input, max_len=6)
         
+        lcd.clear()
+        lcd.message = "Scan Your\nAccess Card"
         if AuthBlock(scanner=nfc, block=pass_block, key=key_b, b=True):
             lcd.clear()
             lcd.message = "Auth Success!"
@@ -445,8 +461,9 @@ while runnning:
                 lcd.message = f"{card_uid}\n{card_pass}"
                 print("[DEBUG] Card info read succesfully!")
                 print("[INFO] Go to the web panel and create a new keycard with following info:")
-                print(f"CardUID: {card_uid}")
+                print(f"CardUID: [{card_uid}]")
                 print(f"UniquePass: {card_pass}")
+                time.sleep(2)
             else:
                 lcd.clear()
                 lcd.message = "Reading Failed!"
