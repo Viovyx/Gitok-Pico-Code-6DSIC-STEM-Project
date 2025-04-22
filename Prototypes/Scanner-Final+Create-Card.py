@@ -181,7 +181,7 @@ def configureNewCard():
     card_pass = None
     while not card_pass:
         user_input = input("[3] Enter a card pass. This will be used to identify the card: ")
-        card_pass = StringToByteArray(key_b, max_len=6)
+        card_pass = StringToByteArray(user_input, max_len=6)
 
     lcd.clear()
     lcd.message = "Creating Card\nPlease wait..."
