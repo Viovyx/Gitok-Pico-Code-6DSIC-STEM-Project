@@ -131,7 +131,7 @@ def toneFail():
 
 # Other
 def getCardPass(scanner):
-    key_a = os.getenv("CARD_KEY_A")
+    key_a =StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
     pass_block = os.getenv("CARD_PASS_BLOCK")
     data = ReadBlock(scanner=scanner, block=pass_block, key_a=key_a)
     if data:
@@ -405,7 +405,7 @@ while runnning:
             card_uid = f"{[i for i in uid]}".replace(" ", "")
             card_pass = getCardPass(scanner=nfc)
             
-            if len(card_pass):
+            if card_pass:
                 print(f"[DEBUG] Found card_pass for {card_uid}: {card_pass}")
                 mqtt_client.publish(check_card_feed, str({"uid":card_uid.replace(",", "."), "pass":card_pass, "ip":ip}).replace("'", '"'))
             
@@ -430,7 +430,7 @@ while runnning:
         while not key_b:
             user_input = input("Enter Admin key (key_b): ")
             key_b = StringToByteArray(user_input, max_len=6)
-
+        
         if AuthBlock(scanner=nfc, block=pass_block, key=key_b, b=True):
             lcd.clear()
             lcd.message = "Auth Success!"
