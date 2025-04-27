@@ -1,4 +1,4 @@
-import board, time, digitalio, pwmio, json
+import board, time, digitalio, pwmio
 import os, ssl, socketpool, wifi
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import asyncio, random
@@ -85,11 +85,9 @@ def publish(mqtt_client, userdata, topic, pid):
 
 
 def message(client, topic, message):
-    if topic == aio_user + "/feeds/lock.open":
-        ip = str(message)  # "192.168.0.11"
-        if ip == str(wifi.radio.ipv4_address):
-            asyncio.create_task(OpenDoor())
-            print("open")
+    if message == str(wifi.radio.ipv4_address):
+        asyncio.create_task(OpenDoor())
+        print("open")
         
 #===========================================================
         
@@ -127,21 +125,16 @@ subscribe_to(topics)
 
 async def ListenReed(interval):
     prevVal = None
-    data = {"status":0, "door_ip":str(wifi.radio.ipv4_address)}
     while True:
         val = reed.value
         if prevVal != val:
-            print(val)
-            
             if val == True:
-                data["status"] = 1
-            else:
-                data["status"] = 2
+                mqtt_client.publish(mqtt_topic,str({"door_ip": "192.168.0.11", "status": 2}).replace("'",'"'))
                 
-            mqtt_client.publish(mqtt_topic, str(data).replace("'",'"'))
-            
+            else:
+                mqtt_client.publish(mqtt_topic,str({"door_ip": "192.168.0.11", "status": 1}).replace("'",'"'))
         prevVal = val
-        await asyncio.sleep(interval)
+        await asyncio.sleep(interval)	
 
 async def ListenMQTTRequest(interval):
     while True:
