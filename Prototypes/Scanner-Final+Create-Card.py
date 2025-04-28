@@ -393,7 +393,7 @@ check_card_feed = aio_user + "/feeds/scanner.checkcard"
 ip = str(wifi.radio.ipv4_address)
 key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
 pass_block=os.getenv("CARD_PASS_BLOCK")
-options = ["Start Scanner", "Create Card", "Card Info"]
+options = ["Start Scanner", "Create Card", "Card Info", ip]
 
 while runnning:
     choice = options[navigate_options(options)]
