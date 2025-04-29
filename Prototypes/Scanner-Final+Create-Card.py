@@ -25,10 +25,10 @@ def InitiateNFC(i2c_sda: Pin, i2c_scl: Pin):
 def GetCardUID(scanner: PN532_I2C):
     print("Waiting for card...")
     while True:
-        mqtt_client.loop()
         uid = scanner.read_passive_target(timeout=0.5)
         if uid is not None:
             break
+        mqtt_client.loop()
     print(f"\nFound card with UID: {[i for i in uid]}")
     
     return uid
