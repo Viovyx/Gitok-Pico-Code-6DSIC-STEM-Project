@@ -418,7 +418,7 @@ while runnning:
             else:
                 print("[ERROR] No Pass Found!")
                 lcd.clear()
-                lcd.message = f"No UniquePass\non block {pass_block}"
+                lcd.message = f"ERROR\nTry again"
                 time.sleep(2)
     elif choice == "Create Card":
         card = configureNewCard()
