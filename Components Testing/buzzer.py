@@ -21,6 +21,16 @@ def toneFail():
     time.sleep(1)
     buzzer.duty_cycle=0
 
+def ToneBuzz():
+    buzzer.duty_cycle = 2**14
+    buzzer.frequency = 300
+    time.sleep(4)
+    buzzer.duty_cycle = 0
+
+ToneBuzz()
+
+time.sleep(1)
+
 toneSucces()
 
 time.sleep(1)
