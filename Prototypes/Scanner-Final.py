@@ -1,6 +1,6 @@
 import board, time, json
 import busio, pwmio, digitalio
-import os, ssl, socketpool, wifi
+import os, ssl, socketpool, wifi, math
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_character_lcd.character_lcd as characterlcd
 from digitalio import DigitalInOut
@@ -28,6 +28,7 @@ def GetCardUID(scanner: PN532_I2C):
         uid = scanner.read_passive_target(timeout=0.5)
         if uid is not None:
             break
+        mqtt_client.loop()
     print(f"\nFound card with UID: {[i for i in uid]}")
     
     return uid
@@ -79,6 +80,10 @@ def CreateNewTrailer(scanner: PN532_I2C, sector: int,  key_b: bytearray, new_key
         if WriteBlock(scanner=scanner, block=block, key_b=key_b, data=trailer):
             print("Key A\t Access Bits\t Key B")
             print(f"{new_key_a}\t {access_bits}\t {new_key_b}")
+            return True
+    else:
+        return False
+    
 
 # Converters
 def StringToByteArray(input_str: str, max_len: int):
@@ -126,13 +131,107 @@ def toneFail():
     buzzer.duty_cycle=0
 
 # Other
-def getCardPass(scanner, uid, pass_block):
-    key_a = os.getenv("CARD_KEY_A")
+def getCardPass(scanner):
+    key_a =StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
+    pass_block = os.getenv("CARD_PASS_BLOCK")
     data = ReadBlock(scanner=scanner, block=pass_block, key_a=key_a)
     if data:
-        card_pass = bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()
+        card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
         print(f"[DEBUG] Card Pass: {card_pass}")
         return card_pass
+
+def configureNewCard():
+    lcd.clear()
+    lcd.message = "Connect to PC\n& Follow Steps!"
+
+    print("\nConfiguring new card. Follow the steps precisely!")
+    print("-----------------------------------------------------\n")
+
+    block = os.getenv("CARD_PASS_BLOCK")
+    sector = math.floor(block/4)+1
+
+    key_b = None
+    while not key_b:
+        user_input = input("[1] Enter Admin Key (key_b): ")
+        key_b = StringToByteArray(user_input, max_len=6)
+    
+    user_input = input("[2] Should the current admin key on this card be updated? This should be run if this is a completely new card! (y/N): ")
+    if user_input.lower() == "y":
+        key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
+        bits = bytearray(list(map(int, (os.getenv("CARD_BITS")).split(","))))
+        
+        prev_key_b = None
+        while not prev_key_b:
+            user_input = input("[2.1] Enter current key_b (Press enter for factory default or enter 'b' for bits mode): ")
+            if len(user_input):
+                if user_input.lower() == "b":
+                    prev_key_b = BitsToByteArray(length=6)
+                else:
+                    prev_key_b = StringToByteArray(user_input, max_len=6)
+            else:
+                prev_key_b = bytearray([255,255,255,255])
+
+        lcd.clear()
+        lcd.message = "Creating Trailer\nPlease wait..."
+        if not CreateNewTrailer(scanner=nfc, sector=sector, key_b=prev_key_b, new_key_a=key_a, new_key_b=key_b, access_bits=bits):
+            lcd.clear()
+            lcd.message = "Trailer Creation\nFailed!"
+            toneFail()
+            time.sleep(1)
+            return False
+
+    card_pass = None
+    while not card_pass:
+        user_input = input("[3] Enter a card pass. This will be used to identify the card: ")
+        card_pass = StringToByteArray(user_input, max_len=16)
+
+    lcd.clear()
+    lcd.message = "Creating Card\nPlease wait..."
+    uid = GetCardUID(scanner=nfc)
+    card_uid = card_uid = f"{[i for i in uid]}".replace(" ", "")
+    if WriteBlock(scanner=nfc, block=block, key_b=key_b, data=card_pass):
+        lcd.clear()
+        lcd.message = "Card Creation\nSuccessful!"
+        toneSuccess()
+        card_pass = getCardPass(scanner=nfc)
+        return {"uid":card_uid, "pass":card_pass}
+    else:
+        lcd.clear()
+        lcd.message = "Card Creation\nFailed!"
+        toneFail()
+        time.sleep(1)
+        return False
+
+# Button + lcd nav funtions
+def wait_for_button_press():
+    while True:        
+        if button_up.value or button_down.value or button_confirm.value:
+            time.sleep(0.1)
+            if button_up.value:
+                toneSuccess()
+                return "up"
+            if button_down.value:
+                toneSuccess()
+                return "down"
+            if button_confirm.value:
+                toneSuccess()
+                return "confirm"
+
+def navigate_options(options):
+    index = 0
+    while True:
+        lcd.clear()
+        lcd.message = "Select Action:\n"
+        lcd.message += options[index]
+        action = wait_for_button_press()
+        if action == "up":
+            index = (index - 1) % len(options)
+        elif action == "down":
+            index = (index + 1) % len(options)
+        elif action == "confirm":
+            lcd.clear()
+            return index
+        
 
 # ---------------
 # Network + MQTT
@@ -287,33 +386,90 @@ buzzer = pwmio.PWMOut(board.GP13, variable_frequency=True)
 # Program
 # -------------
 toneSuccess()
+lcd.backlight = True
+runnning = True
 
 check_card_feed = aio_user + "/feeds/scanner.checkcard"
 ip = str(wifi.radio.ipv4_address)
 key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
 pass_block=os.getenv("CARD_PASS_BLOCK")
-
-lcd.backlight = True
-runnning = True
+options = ["Start Scanner", "Create Card", "Card Info", ip]
 
 while runnning:
-    lcd.clear()
-    lcd.message = "Scan Your\nAccess Card"
-    
-    uid = GetCardUID(scanner=nfc)
-    card_uid = f"{[i for i in uid]}".replace(" ", "").replace(",", ".")
-    data = ReadBlock(scanner=nfc, block=pass_block, key_a=key_a)
-    
-    if data:
-        card_pass = f"{bytearray.fromhex(''.join(data)+'0').decode() if len(''.join(data))%2 else bytearray.fromhex(''.join(data)).decode()}".replace("\x00","")
-        mqtt_client.publish(check_card_feed, str({"uid":card_uid, "pass":card_pass, "ip":ip}).replace("'", '"'))
-    
+    choice = options[navigate_options(options)]
+
+    if choice == "Start Scanner":
+        while runnning:
+            lcd.clear()
+            lcd.message = "Scan Your\nAccess Card"
+            
+            uid = GetCardUID(scanner=nfc)
+            card_uid = f"{[i for i in uid]}".replace(" ", "")
+            card_pass = getCardPass(scanner=nfc)
+            
+            if card_pass:
+                print(f"[DEBUG] Found card_pass for {card_uid}: {card_pass}")
+                mqtt_client.publish(check_card_feed, str({"uid":card_uid.replace(",", "."), "pass":card_pass, "ip":ip}).replace("'", '"'))
+            
+                lcd.clear()
+                lcd.message = "Loading...\nPlease wait"
+                wait_for_action()
+                time.sleep(2)
+            else:
+                print("[ERROR] No Pass Found!")
+                lcd.clear()
+                lcd.message = f"ERROR\nTry again"
+                time.sleep(2)
+    elif choice == "Create Card":
+        card = configureNewCard()
+        card_pass = getCardPass(scanner=nfc)
+        if card and card_pass == card["pass"]:
+            lcd.clear()
+            lcd.message = f"{card["uid"]}\n{card["pass"]}"
+            
+            print("[DEBUG] New card created succesfully!")
+            print("[INFO] Go to the web panel and create a new keycard with following info:")
+            print(f"CardUID: {card["uid"]}")
+            print(f"UniquePass: {card["pass"]}")
+            time.sleep(2)
+        else:
+            toneFail()
+            print("[DEBUG] New card creation failed! Password was not set correctly.")
+            lcd.clear()
+            lcd.message = "Failed to\nSet Pass!"
+    elif choice == "Card Info":
         lcd.clear()
-        lcd.message = "Loading...\nPlease wait"
-        wait_for_action()
-        time.sleep(2)
-    else:
-        print("[ERROR] No Pass Found!")
+        lcd.message = "Connect to PC\n& Enter Key!"
+        
+        key_b = None
+        while not key_b:
+            user_input = input("Enter Admin key (key_b): ")
+            key_b = StringToByteArray(user_input, max_len=6)
+        
         lcd.clear()
-        lcd.message = f"No UniquePass\non block {pass_block}"
-        time.sleep(2)
+        lcd.message = "Scan Your\nAccess Card"
+        if AuthBlock(scanner=nfc, block=pass_block, key=key_b, b=True):
+            lcd.clear()
+            lcd.message = "Auth Success!"
+            toneSuccess()
+
+            uid = GetCardUID(scanner=nfc)
+            card_uid = f"{[i for i in uid]}".replace(" ", "").replace("[", "").replace("]", "")
+            card_pass = getCardPass(scanner=nfc)
+
+            if card_pass:
+                lcd.clear()
+                lcd.message = f"{card_uid}\n{card_pass}"
+                print("[DEBUG] Card info read succesfully!")
+                print("[INFO] Go to the web panel and create a new keycard with following info:")
+                print(f"CardUID: [{card_uid}]")
+                print(f"UniquePass: {card_pass}")
+                time.sleep(2)
+            else:
+                lcd.clear()
+                lcd.message = "Reading Failed!"
+                toneFail()
+        else:
+            lcd.clear()
+            lcd.message = "Auth Failed!"
+            toneFail()
