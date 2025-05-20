@@ -420,6 +420,7 @@ while runnning:
                 lcd.clear()
                 lcd.message = f"ERROR\nTry again"
                 toneFail()
+                time.sleep(0.5)
     elif choice == "Create Card":
         card = configureNewCard()
         card_pass = getCardPass(scanner=nfc)
