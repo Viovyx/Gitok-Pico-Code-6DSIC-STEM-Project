@@ -4,6 +4,7 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import asyncio, random
 # Connect to WiFi
 print("Connecting to WiFi")
+print(os.getenv("WIFI_SSID"))
 wifi.radio.connect(os.getenv("WIFI_SSID"), os.getenv("WIFI_PASS"))
 print("Connected!")
 
@@ -85,6 +86,7 @@ def publish(mqtt_client, userdata, topic, pid):
 
 
 def message(client, topic, message):
+    print(str(wifi.radio.ipv4_address))
     if message == str(wifi.radio.ipv4_address):
         asyncio.create_task(OpenDoor())
         print("open")
@@ -125,16 +127,17 @@ subscribe_to(topics)
 
 async def ListenReed(interval):
     prevVal = None
+    status = 0
+    ip = str(wifi.radio.ipv4_address)
+    
     while True:
         val = reed.value
         if prevVal != val:
-            if val == True:
-                mqtt_client.publish(mqtt_topic,str({"door_ip": "192.168.0.11", "status": 2}).replace("'",'"'))
-                
-            else:
-                mqtt_client.publish(mqtt_topic,str({"door_ip": "192.168.0.11", "status": 1}).replace("'",'"'))
+            status = 2 if val == True else 1
+            mqtt_client.publish(mqtt_topic,str({"door_ip": ip, "status": status}).replace("'",'"'))
+    
         prevVal = val
-        await asyncio.sleep(interval)	
+        await asyncio.sleep(interval)
 
 async def ListenMQTTRequest(interval):
     while True:
