@@ -27,13 +27,13 @@ mqtt_topic = aio_user+"/feeds/lock.status"
 #Initializing pins
 #=============================================================
 print("initializing pins")
-actuator = digitalio.DigitalInOut(board.GP18)
-actuator.direction = digitalio.Direction.OUTPUT
-actuator.value = False
+led = digitalio.DigitalInOut(board.GP18)
+led.direction = digitalio.Direction.OUTPUT
+led.value = False
 
-actuator2 = digitalio.DigitalInOut(board.GP22)
-actuator2.direction = digitalio.Direction.OUTPUT
-actuator2.value = False
+slot = digitalio.DigitalInOut(board.GP22)
+slot.direction = digitalio.Direction.OUTPUT
+slot.value = False
 
 buzzer = pwmio.PWMOut(board.GP16, variable_frequency=True)
 
@@ -48,11 +48,11 @@ def ToneBuzz():
     buzzer.duty_cycle = 0
     
 async def OpenDoor():
-    actuator.value = True
-    actuator2.value = True
+    led.value = True
+    slot.value = True
     ToneBuzz()
-    actuator.value = False
-    actuator2.value = False
+    led.value = False
+    slot.value = False
     print("done")
     
 # Define callback methods which are called when events occur
