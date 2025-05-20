@@ -390,6 +390,7 @@ lcd.backlight = True
 runnning = True
 
 check_card_feed = aio_user + "/feeds/scanner.checkcard"
+action_feed = aio_user + "/feeds/scanner.action"
 ip = str(wifi.radio.ipv4_address)
 key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
 pass_block=os.getenv("CARD_PASS_BLOCK")
@@ -417,6 +418,7 @@ while runnning:
                 time.sleep(2)
             else:
                 print("[ERROR] No Pass Found!")
+                mqtt_client.publish(action_feed, str({"user":0,"action":0,"door_ip":0}).replace("'", '"'))
                 lcd.clear()
                 lcd.message = f"ERROR\nTry again"
                 toneFail()
