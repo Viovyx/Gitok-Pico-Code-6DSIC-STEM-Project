@@ -297,9 +297,9 @@ def message(client, topic, message):
             
         else:  # invalid action
             print("[DEBUG] Invalid action")
-            toneFail()
             lcd.clear()
             lcd.message = "ERROR\nTry again"
+            toneFail()
         
         waiting_for_action = False
 
@@ -393,7 +393,7 @@ check_card_feed = aio_user + "/feeds/scanner.checkcard"
 ip = str(wifi.radio.ipv4_address)
 key_a = StringToByteArray(os.getenv("CARD_KEY_A"), max_len=6)
 pass_block=os.getenv("CARD_PASS_BLOCK")
-options = ["Start Scanner", "Create Card", "Card Info", ip]
+options = ["Start Scanner", "Card Info", ip]  # "Create Card" option removed
 
 while runnning:
     choice = options[navigate_options(options)]
@@ -419,7 +419,7 @@ while runnning:
                 print("[ERROR] No Pass Found!")
                 lcd.clear()
                 lcd.message = f"ERROR\nTry again"
-                time.sleep(2)
+                toneFail()
     elif choice == "Create Card":
         card = configureNewCard()
         card_pass = getCardPass(scanner=nfc)
