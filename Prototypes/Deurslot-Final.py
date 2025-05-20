@@ -130,6 +130,9 @@ async def ListenReed(interval):
     status = 0
     ip = str(wifi.radio.ipv4_address)
     
+    status = 2 if reed.value == True else 1
+    mqtt_client.publish(mqtt_topic,str({"door_ip": ip, "status": status}).replace("'",'"'))
+    
     while True:
         val = reed.value
         if prevVal != val:
