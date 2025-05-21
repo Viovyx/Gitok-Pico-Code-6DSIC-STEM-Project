@@ -11,3 +11,8 @@
 | I2C_Scan.py                      | programma dat gebruikt kan worden om aangesloten I2C sensoren te vinden. |
 | MQTT-testing.py                  | Programma voor de functionaliteiten van MQTT met CircuitPython te testen. |
 | Component Testing/\*             | De codes die gebruikt zijn voor het testen van elk component apart. |
+
+## Resources:
+- [Adafruit.io](https://io.adafruit.com/)
+- [PyPi](https://pypi.org/)
+- [AllDataSheet](https://www.alldatasheet.com/)
