@@ -1,4 +1,5 @@
-# Softwarearchitectuur
+# Gitok Pico Code 6DSIC STEM Project
+## Softwarearchitectuur
 | Onderdeel                        | Functieomschrijving |
 | -------------------------------- | -------------------------------- |
 | settings.toml.example            | Voorbeeld configuratie bestand met variabelen die in de code gebruikt worden. |
